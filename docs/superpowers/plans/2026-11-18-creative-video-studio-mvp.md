@@ -1131,25 +1131,89 @@ git commit -m "feat(tts): add uv project and voice validation logic"
 
 **Files:**
 - Create: `services/tts/scripts/download_models.py`, `services/tts/app/main.py`
-- Test: `services/tts/tests/test_api.py`
+- Test: `services/tts/tests/test_download.py`, `services/tts/tests/test_api.py`
 
-- [ ] **Step 1: Model download script** — `services/tts/scripts/download_models.py`
+- [ ] **Step 1: Model download script with integrity check** — `services/tts/scripts/download_models.py`
+
+Files are verified by size **and SHA-256**. Digests are the ones GitHub publishes for the `model-files-v1.1` release assets (`GET /repos/thewh1teagle/kokoro-onnx/releases/tags/model-files-v1.1` → `assets[].digest`). Valid files are skipped; invalid ones are re-downloaded; a corrupted download is deleted and the script exits non-zero.
+
+Failing test first — `services/tts/tests/test_download.py`:
 
 ```python
-"""Downloads Kokoro v1.0 ONNX model files into services/tts/models (skips if present)."""
+import hashlib
+import importlib.util
+from pathlib import Path
+
+SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "download_models.py"
+spec = importlib.util.spec_from_file_location("download_models", SCRIPT)
+dm = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dm)
+
+
+def test_pins_official_sha256_and_sizes():
+    assert dm.FILES["kokoro-v1.0.onnx"] == (
+        325_505_369,
+        "beb0d1848dee9a49da392cc3df26958d46cfa35d321edf434f52949153f0df3a",
+    )
+    assert dm.FILES["voices-v1.0.bin"] == (
+        28_214_398,
+        "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
+    )
+
+
+def test_is_valid_accepts_matching_file(tmp_path):
+    f = tmp_path / "m.bin"
+    f.write_bytes(b"hello")
+    assert dm.is_valid(f, 5, hashlib.sha256(b"hello").hexdigest())
+
+
+def test_is_valid_rejects_wrong_size_hash_or_missing(tmp_path):
+    f = tmp_path / "m.bin"
+    f.write_bytes(b"hellx")
+    assert not dm.is_valid(f, 5, hashlib.sha256(b"hello").hexdigest())  # same size, corrupted
+    assert not dm.is_valid(f, 6, hashlib.sha256(b"hellx").hexdigest())  # wrong size
+    assert not dm.is_valid(tmp_path / "missing.bin", 5, "0" * 64)
+```
+
+Run: `cd services/tts && uv run pytest tests/test_download.py -q` → FAIL (script missing).
+
+Implementation:
+
+```python
+"""Downloads Kokoro v1.0 ONNX model files into services/tts/models.
+
+Each file is verified by size and SHA-256 (digests published by GitHub for the
+model-files-v1.1 release). Valid existing files are skipped; invalid ones are re-downloaded.
+"""
+import hashlib
 import sys
 import urllib.request
 from pathlib import Path
 
 BASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1"
-FILES = {"kokoro-v1.0.onnx": 325_505_369, "voices-v1.0.bin": 28_214_398}
+FILES = {
+    "kokoro-v1.0.onnx": (325_505_369, "beb0d1848dee9a49da392cc3df26958d46cfa35d321edf434f52949153f0df3a"),
+    "voices-v1.0.bin": (28_214_398, "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"),
+}
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 
 
-def download(name: str, size: int) -> None:
+def sha256_of(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def is_valid(path: Path, size: int, sha256: str) -> bool:
+    return path.exists() and path.stat().st_size == size and sha256_of(path) == sha256
+
+
+def download(name: str, size: int, sha256: str) -> None:
     dest = MODELS_DIR / name
-    if dest.exists() and dest.stat().st_size == size:
-        print(f"[skip] {name} already present")
+    if is_valid(dest, size, sha256):
+        print(f"[skip] {name} already present and verified")
         return
     tmp = dest.with_suffix(dest.suffix + ".part")
 
@@ -1160,21 +1224,24 @@ def download(name: str, size: int) -> None:
 
     urllib.request.urlretrieve(f"{BASE}/{name}", tmp, hook)
     print()
-    if tmp.stat().st_size != size:
-        tmp.unlink()
-        raise SystemExit(f"{name}: unexpected size, download corrupted. Re-run the script.")
+    if not is_valid(tmp, size, sha256):
+        tmp.unlink(missing_ok=True)
+        raise SystemExit(f"{name}: size or SHA-256 mismatch, download corrupted. Re-run the script.")
     tmp.replace(dest)
+    print(f"[ok] {name} verified (sha256 {sha256[:12]}...)")
 
 
 if __name__ == "__main__":
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    for n, s in FILES.items():
-        download(n, s)
+    for n, (s, h) in FILES.items():
+        download(n, s, h)
     print(f"Models ready in {MODELS_DIR}")
 ```
 
+Run: `cd services/tts && uv run pytest tests/test_download.py -q` → 3 passed.
+
 Run: `npm run setup:tts`
-Expected: downloads ~350 MB (or `[skip]` lines), ends with `Models ready in …\services\tts\models`.
+Expected: `[ok] kokoro-v1.0.onnx verified (sha256 beb0d1848dee...)`, `[ok] voices-v1.0.bin verified (...)` (or `[skip] … already present and verified`), then `Models ready in …\services\tts\models`.
 
 - [ ] **Step 2: Write failing API tests** — `services/tts/tests/test_api.py`
 
@@ -1355,7 +1422,7 @@ def synthesize(body: SynthRequest, request: Request):
 - [ ] **Step 5: Run to verify pass**
 
 Run: `npm run test:tts`
-Expected: all tests pass (≈ 16). First run loads the model (~2 s).
+Expected: all tests pass (19 incl. download tests). First run loads the model (~2 s).
 
 - [ ] **Step 6: Manual check of the dev server**
 
