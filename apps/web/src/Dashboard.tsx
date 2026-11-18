@@ -54,33 +54,33 @@ export function Dashboard({ email, onLogout, onAuthLost }: { email: string; onLo
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-6 py-8">
-      <header className="flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Creative Video Studio</h1>
-          <p className="text-sm text-slate-400">Paste a script, pick a voice, generate a narrated 3D video.</p>
+          <h1 className="text-xl font-bold sm:text-2xl">Creative Video Studio</h1>
+          <p className="text-sm text-slate-500">Paste a script, pick a voice, generate a narrated 3D video.</p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-slate-400">{email}</span>
-          <button onClick={onLogout} className="rounded-lg border border-slate-700 px-3 py-1.5 hover:bg-slate-800">
+        <div className="flex min-w-0 items-center gap-3 text-sm">
+          <span className="min-w-0 truncate text-slate-500">{email}</span>
+          <button onClick={onLogout} className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-100">
             Log out
           </button>
         </div>
       </header>
 
-      {apiError && <div className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{apiError}</div>}
+      {apiError && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{apiError}</div>}
       {health?.tts === 'unreachable' && (
-        <div className="rounded-lg bg-amber-950/50 p-3 text-sm text-amber-300">
+        <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
           TTS service is not running. Start it with <code>npm run dev:tts</code>, then reload.
         </div>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">New video</h2>
           <ScriptForm voices={voices} config={config} disabled={busy} onSubmit={submit} />
         </section>
-        <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">Output</h2>
           <OutputPanel job={job} submitError={submitError} />
         </section>

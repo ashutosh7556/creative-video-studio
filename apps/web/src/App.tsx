@@ -30,7 +30,7 @@ export default function App() {
     case 'error':
       return (
         <div className="mx-auto max-w-xl px-6 py-16">
-          <div className="rounded-lg bg-red-950/50 p-3 text-sm text-red-300">{session.message}</div>
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{session.message}</div>
         </div>
       );
     case 'out':

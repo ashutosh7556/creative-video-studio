@@ -27,8 +27,8 @@ Each paragraph becomes one scene. Separate scenes with a blank line.
 
 Aim for 30–45 seconds of narration.`;
 
-const fieldLabel = 'mb-1 block text-sm font-medium text-slate-300';
-const selectCls = 'w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm disabled:opacity-50';
+const fieldLabel = 'mb-1 block text-sm font-medium text-slate-700';
+const selectCls = 'w-full rounded-lg border border-slate-300 bg-white p-2 text-base disabled:opacity-50 sm:text-sm';
 
 export function ScriptForm({ voices, config, disabled, onSubmit }: Props) {
   const [script, setScript] = useState('');
@@ -66,16 +66,16 @@ export function ScriptForm({ voices, config, disabled, onSubmit }: Props) {
           value={script}
           onChange={(e) => setScript(e.target.value)}
           placeholder={PLACEHOLDER}
-          rows={14}
-          className="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm leading-relaxed focus:border-indigo-500 focus:outline-none"
+          rows={10}
+          className="w-full rounded-lg border border-slate-300 bg-white p-3 text-base leading-relaxed sm:text-sm focus:border-indigo-500 focus:outline-none"
         />
         <div className="mt-1 flex flex-wrap gap-x-3 text-xs">
-          <span className="text-slate-400">
+          <span className="text-slate-500">
             {scenes.length} scene{scenes.length === 1 ? '' : 's'} · ≈ {estimate.toFixed(0)} s (estimate)
           </span>
-          {tooMany && <span className="text-red-400">Too many scenes: maximum is {MAX_SCENES}.</span>}
+          {tooMany && <span className="text-red-600">Too many scenes: maximum is {MAX_SCENES}.</span>}
           {!tooMany && estimate > MAX_DURATION_SEC && (
-            <span className="text-amber-400">
+            <span className="text-amber-700">
               Likely over {MAX_DURATION_SEC} s; generation will fail if the narration is too long.
             </span>
           )}
@@ -85,7 +85,7 @@ export function ScriptForm({ voices, config, disabled, onSubmit }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="lang" className={fieldLabel}>
             Language
@@ -121,10 +121,10 @@ export function ScriptForm({ voices, config, disabled, onSubmit }: Props) {
 
       <div>
         <div className="mb-1 flex justify-between text-sm">
-          <label htmlFor="speed" className="font-medium text-slate-300">
+          <label htmlFor="speed" className="font-medium text-slate-700">
             Speed
           </label>
-          <span className="text-slate-400">{speed.toFixed(2)}×</span>
+          <span className="text-slate-500">{speed.toFixed(2)}×</span>
         </div>
         <input
           id="speed"
@@ -138,7 +138,7 @@ export function ScriptForm({ voices, config, disabled, onSubmit }: Props) {
         />
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
         <input
           id="bgm"
           type="checkbox"
@@ -158,7 +158,7 @@ export function ScriptForm({ voices, config, disabled, onSubmit }: Props) {
       <button
         type="submit"
         disabled={!canSubmit}
-        className="w-full rounded-lg bg-indigo-600 py-3 font-semibold hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-lg bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {disabled ? 'Generating…' : 'Generate Video'}
       </button>
