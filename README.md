@@ -95,6 +95,7 @@ Docs:
 
 ## Deployment
 
-The frontend has a minimal `apps/web/vercel.json` (Vercel root directory: `apps/web`), but it isn't
-deployed yet. A deployed frontend needs an API, TTS service and worker it can reach over the internet,
-which is planned for a later version.
+The dashboard deploys to Vercel from the repo root (`vercel.json`): it builds only `apps/web`, skips
+Puppeteer's Chromium download, and `.vercelignore` keeps `.env`, `data/` and the TTS model out of uploads.
+In production the dashboard calls `/api/...` on its own domain. Until a backend (API + TTS + renderer) is
+hosted and proxied there, the deployed site shows the login page but cannot sign in.

@@ -1,0 +1,15 @@
+# Never upload secrets, local data, models or build output to Vercel.
+.env
+.env.*
+!.env.example
+data/
+test-artifacts/
+node_modules/
+**/node_modules/
+**/dist/
+services/tts/.venv/
+services/tts/models/
+assets/music/*
+!assets/music/.gitkeep
+**/__pycache__/
+.pytest_cache/

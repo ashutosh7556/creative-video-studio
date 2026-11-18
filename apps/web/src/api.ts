@@ -1,6 +1,7 @@
 import type { ApiConfig, HealthStatus, JobRecord, JobRequest, VoicesByLang } from '@cvs/shared';
 
-const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
+// Dev: the local API on :4000. Production: same origin ("/api/..."), proxied to the backend by Vercel.
+const BASE = (import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '')).replace(/\/$/, '');
 
 export interface AuthStatus {
   authenticated: boolean;
