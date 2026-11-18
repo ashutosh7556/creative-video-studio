@@ -1,4 +1,6 @@
 import { fork, type ChildProcess } from 'node:child_process';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { JobRecord } from '@cvs/shared';
 import type { JobStore } from './jobStore';
 import { tail } from './proc';
@@ -102,15 +104,18 @@ export class LocalForkRunner implements JobRunner {
     child.on('exit', (code, signal) => {
       const final = settled
         ? this.store.update(id, (j) => j) // wait for queued writes on this job to flush
-        : this.store.update(id, (j) => ({
-            ...j,
-            status: 'failed',
-            finishedAt: now(),
-            error: {
-              code: 'WORKER_CRASHED',
-              message: `Worker exited with code ${code ?? signal} before finishing. ${stderr}`.trim(),
-            },
-          }));
+        : this.store
+            .update(id, (j) => ({
+              ...j,
+              status: 'failed',
+              finishedAt: now(),
+              error: {
+                code: 'WORKER_CRASHED',
+                message: `Worker exited with code ${code ?? signal} before finishing. ${stderr}`.trim(),
+              },
+            }))
+            // A crashed worker cannot clean up after itself; never leave a partial MP4 behind.
+            .then(() => rm(join(this.store.dir(id), 'out.tmp.mp4'), { force: true }));
       final.catch((err) => console.error(err)).finally(() => this.release());
     });
 

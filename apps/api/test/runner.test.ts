@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,6 +57,15 @@ describe('LocalForkRunner', () => {
     expect(j.status).toBe('failed');
     expect(j.error?.code).toBe('WORKER_CRASHED');
     expect(j.error?.message).toMatch(/code 3/);
+  });
+
+  it('removes the partial out.tmp.mp4 after a worker crash but keeps the job directory', async () => {
+    const job = await store.create(req('crash'));
+    runner.enqueue(job.id);
+    await waitFinished(job.id);
+    const files = await readdir(store.dir(job.id));
+    expect(files).toContain('job.json');
+    expect(files).not.toContain('out.tmp.mp4');
   });
 
   it('continues with the next job after a crash', async () => {
