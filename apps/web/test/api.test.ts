@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api } from '../src/api';
+import { AuthRequiredError, api } from '../src/api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -30,6 +30,32 @@ describe('api client', () => {
     await expect(api.createJob({ script: 'x', lang: 'en-us', voice: 'af_heart', speed: 1, bgm: false })).rejects.toThrow(
       'Script has 13 scenes; the maximum is 12. Merge some paragraphs.',
     );
+  });
+
+  it('sends the session cookie with every request (credentials: include)', async () => {
+    const f = stubFetch(200, []);
+    await api.listJobs();
+    expect((f.mock.calls[0] as unknown as [string, RequestInit])[1].credentials).toBe('include');
+  });
+
+  it('throws AuthRequiredError on 401 so the app can show the login page', async () => {
+    stubFetch(401, { error: 'Login required' });
+    await expect(api.listJobs()).rejects.toBeInstanceOf(AuthRequiredError);
+  });
+
+  it('logs in with email and password and reads the session', async () => {
+    const f = stubFetch(200, { authenticated: true, email: 'me@example.com' });
+    expect(await api.login('me@example.com', 'pw')).toEqual({ authenticated: true, email: 'me@example.com' });
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('http://localhost:4000/api/auth/login');
+    expect(JSON.parse(init.body as string)).toEqual({ email: 'me@example.com', password: 'pw' });
+  });
+
+  it('reports wrong credentials as a normal error (not AuthRequiredError)', async () => {
+    stubFetch(401, { error: 'Invalid email or password' });
+    const err = await api.login('me@example.com', 'bad').catch((e) => e);
+    expect(err).not.toBeInstanceOf(AuthRequiredError);
+    expect(err.message).toBe('Invalid email or password');
   });
 
   it('falls back to the HTTP status when the body has no error field', async () => {

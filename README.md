@@ -20,6 +20,27 @@ npm run setup:tts     # Python env + Kokoro model (~350 MB, verified by SHA-256)
 npm run build:engine  # builds the scene engine page used by the renderer
 ```
 
+## Login (required)
+
+The dashboard and API only work for one email/password, which you set in a `.env` file at the repo root:
+
+```bash
+copy .env.example .env      # macOS/Linux: cp .env.example .env
+```
+
+Then edit `.env`:
+
+```
+AUTH_EMAIL=you@yourdomain.com
+AUTH_PASSWORD=at-least-8-characters
+AUTH_SECRET=            # optional; set a long random string to stay logged in across API restarts
+```
+
+- `.env` is gitignored, so your credentials are never committed. The API won't start without valid values.
+- Sessions use an HttpOnly cookie that lasts 7 days.
+- 5 wrong attempts from one IP lock login for 15 minutes.
+- Change the password by editing `.env` and restarting the API.
+
 ## Run
 
 ```bash

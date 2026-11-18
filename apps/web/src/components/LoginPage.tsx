@@ -1,0 +1,73 @@
+import { errorMessage } from '@cvs/shared';
+import { useState } from 'react';
+import { api } from '../api';
+
+const inputCls =
+  'w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-sm focus:border-indigo-500 focus:outline-none';
+
+export function LoginPage({ onLoggedIn }: { onLoggedIn(email: string): void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api.login(email, password);
+      onLoggedIn(res.email ?? email);
+    } catch (err) {
+      setError(errorMessage(err));
+      setPassword('');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-5 rounded-xl border border-slate-800 bg-slate-900/50 p-8">
+        <div>
+          <h1 className="text-2xl font-bold">Creative Video Studio</h1>
+          <p className="text-sm text-slate-400">Sign in to continue.</p>
+        </div>
+        <div>
+          <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-300">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-300">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        {error && <div className="rounded-lg bg-red-950/50 p-2.5 text-sm text-red-300">{error}</div>}
+        <button
+          type="submit"
+          disabled={busy || !email || !password}
+          className="w-full rounded-lg bg-indigo-600 py-2.5 font-semibold hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Sign in
+        </button>
+      </form>
+    </div>
+  );
+}
