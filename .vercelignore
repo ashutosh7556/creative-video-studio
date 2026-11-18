@@ -7,8 +7,8 @@ test-artifacts/
 node_modules/
 **/node_modules/
 **/dist/
-services/tts/.venv/
-services/tts/models/
+# The Python TTS service is backend-only (needs the 350 MB model); the dashboard does not use it.
+services/
 assets/music/*
 !assets/music/.gitkeep
 **/__pycache__/
