@@ -1583,7 +1583,10 @@ git commit -m "chore(engine): scaffold scene-engine package and bundle OFL fonts
 ```ts
 import gsap from 'gsap';
 import { describe, expect, it } from 'vitest';
-import { cameraMoves } from '../src/cameraMoves';
+import { cameraMoves, type CamState } from '../src/cameraMoves';
+
+// GSAP attaches a private `_gsap` cache to tween targets, so compare camera fields only.
+const pick = (s: CamState): CamState => ({ radius: s.radius, angle: s.angle, y: s.y, fov: s.fov, lookY: s.lookY });
 import { mulberry32 } from '../src/rng';
 import { dipAlpha } from '../src/transitions';
 
@@ -1618,17 +1621,24 @@ describe('cameraMoves', () => {
       const tl = gsap.timeline({ paused: true });
       move.build(tl, s, 3);
       tl.seek(2, false);
-      const atTwo = { ...s };
+      const atTwo = pick(s);
       tl.seek(0.5, false);
       tl.seek(2.9, false);
       tl.seek(2, false);
-      expect(s).toEqual(atTwo);
+      expect(pick(s)).toEqual(atTwo);
+      expect(atTwo).not.toEqual(move.initial); // the move actually changed something
       tl.seek(0, false);
-      expect(s).toEqual(move.initial);
+      // GSAP writes tweened values rounded to 6 decimals, so compare the start state with tolerance.
+      const back = pick(s);
+      for (const k of Object.keys(move.initial) as (keyof CamState)[]) {
+        expect(back[k]).toBeCloseTo(move.initial[k], 5);
+      }
     }
   });
 });
 ```
+
+Notes (found during execution): GSAP attaches a private `_gsap` cache to tween targets, so the test compares camera fields only via `pick()`; GSAP writes tweened values rounded to 6 decimals, so the return-to-start check uses `toBeCloseTo(…, 5)`. Out-of-order seek determinism stays exact.
 
 - [ ] **Step 2: Run to verify failure**
 
@@ -1729,7 +1739,7 @@ git commit -m "feat(engine): add seeded rng, dip transition and GSAP camera move
 
 ### Task 10: Template, captions, fonts, engine core and page bridge
 
-No unit tests in this task (DOM/WebGL code); it is covered by the browser tests in Task 11, written immediately after.
+No unit tests in this task (DOM/WebGL code). **Execution order:** write Task 11's browser test file first and watch it fail (build cannot resolve `src/main.ts`), then implement this task, then run Task 11. Commit Task 10 (src) and Task 11 (test) separately.
 
 **Files:**
 - Create: `packages/scene-engine/src/templates/registry.ts`, `src/templates/titleCard.ts`, `src/captionDraw.ts`, `src/fonts.ts`, `src/engine.ts`, `src/main.ts`
@@ -2156,7 +2166,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await browser?.close();
-  await new Promise<void>((r) => server?.httpServer.close(() => r()));
+  await new Promise<void>((r) => (server ? server.httpServer.close(() => r()) : r()));
 });
 
 async function openEngine(spec: VideoSpec): Promise<Page> {
@@ -2201,6 +2211,28 @@ describe('pixel determinism (raw canvas, before JPEG)', () => {
     await a.close();
     await b.close();
   });
+
+  it('does not leak memory across repeated full renders', async () => {
+    const page = await openEngine(spec);
+    const heapAfterPass = async () => {
+      for (let n = 0; n < spec.totalFrames; n++) {
+        await page.evaluate((f) => {
+          window.__engine.renderFrame(f);
+          window.__engine.captureJpeg(0.92);
+        }, n);
+      }
+      const session = await page.createCDPSession();
+      await session.send('HeapProfiler.collectGarbage');
+      await session.detach();
+      return (await page.metrics()).JSHeapUsedSize ?? 0;
+    };
+    const first = await heapAfterPass();
+    await heapAfterPass();
+    const third = await heapAfterPass();
+    console.log(`[memory] JS heap after pass 1: ${(first / 2 ** 20).toFixed(1)} MB, pass 3: ${(third / 2 ** 20).toFixed(1)} MB`);
+    expect(third - first).toBeLessThan(5 * 2 ** 20);
+    await page.close();
+  });
 });
 
 describe('Hindi captions', () => {
@@ -2244,6 +2276,8 @@ describe('Hindi captions', () => {
 ```
 
 Spec frames for the determinism spec: (2.5 + 0.6) × 30 = 93 per scene, total 186, so frames 45, 120 and 150 are valid.
+
+Notes (found during execution): `afterAll` must resolve when `server` is undefined (otherwise a failed setup hangs 240 s). The memory test (added for laptop safety) renders the full clip three times, forces GC via CDP `HeapProfiler.collectGarbage`, and asserts JS heap growth < 5 MB. Measured on the dev laptop: heap 3.4 → 3.6 MB; a separate 44 s / 1320-frame probe peaked at ~626 MB total Chromium working set at ~99 ms/frame (SwiftShader, CPU only).
 
 - [ ] **Step 2: Run**
 
@@ -4317,7 +4351,8 @@ export async function checkPrereqs(engineDist: string): Promise<string[]> {
     problems.push('Scene engine is not built. Run: npm run build:engine');
   }
   try {
-    if (!existsSync(puppeteer.executablePath())) throw new Error();
+    // Puppeteer 25+: executablePath() returns a Promise.
+    if (!existsSync(await puppeteer.executablePath())) throw new Error();
   } catch {
     problems.push('Puppeteer Chromium is missing. Run: npx puppeteer browsers install chrome');
   }
