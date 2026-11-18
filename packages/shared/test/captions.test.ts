@@ -35,6 +35,43 @@ describe('chunkCaption', () => {
   });
 });
 
+describe('chunkCaption balancing (no orphan words)', () => {
+  it('splits an over-long sentence into balanced chunks instead of leaving a tail word', () => {
+    // Greedy would give 'aaaa bbbb cccc dddd' + 'eeee'.
+    const chunks = chunkCaption('aaaa bbbb cccc dddd eeee', 20);
+    expect(chunks).toHaveLength(2);
+    for (const c of chunks) expect(c.length).toBeLessThanOrEqual(14);
+    expect(chunks.join(' ')).toBe('aaaa bbbb cccc dddd eeee');
+  });
+
+  it('fixes the real Hindi case seen in the Phase 5 video (no lone "है।")', () => {
+    const s = 'रात का आसमान हज़ारों सालों से इंसानों को आकर्षित करता रहा है।';
+    const chunks = chunkCaption(s, 60);
+    expect(chunks.length).toBe(2);
+    expect(chunks).not.toContain('है।');
+    const [a, b] = chunks.map((c) => c.length);
+    expect(Math.min(a, b) / Math.max(a, b)).toBeGreaterThan(0.6);
+    expect(chunks.join(' ')).toBe(s);
+  });
+
+  it('uses the minimum number of chunks and keeps each within maxChars', () => {
+    const words = Array.from({ length: 30 }, (_, i) => `w${i}xx`); // 30 words × 5 chars + spaces = 179
+    const chunks = chunkCaption(words.join(' '), 70);
+    expect(chunks).toHaveLength(3);
+    for (const c of chunks) expect(c.length).toBeLessThanOrEqual(70);
+    const lens = chunks.map((c) => c.length);
+    expect(Math.max(...lens) - Math.min(...lens)).toBeLessThanOrEqual(6);
+  });
+
+  it('still never splits a word longer than maxChars', () => {
+    expect(chunkCaption('tiny supercalifragilisticexpialidocious end', 10)).toEqual([
+      'tiny',
+      'supercalifragilisticexpialidocious',
+      'end',
+    ]);
+  });
+});
+
 describe('timeCaptions', () => {
   it('is contiguous, starts at scene start and ends at scene end', () => {
     const cues = timeCaptions(['aaaa', 'bb', 'cccc'], 100, 60, 78);
