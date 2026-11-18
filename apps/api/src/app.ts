@@ -12,6 +12,16 @@ import {
 } from '@cvs/shared';
 import cors from 'cors';
 import express from 'express';
+import {
+  DEFAULT_SESSION_TTL_MS,
+  LoginLimiter,
+  SESSION_COOKIE,
+  checkCredentials,
+  issueToken,
+  parseCookies,
+  verifyToken,
+  type AuthConfig,
+} from './auth';
 import { findBgm } from './bgm';
 import type { JobStore } from './jobStore';
 import type { JobRunner } from './runner';
@@ -24,18 +34,61 @@ export interface AppDeps {
   musicDir: string;
   engineDist: string;
   corsOrigins: string[];
+  auth: AuthConfig;
 }
 
 /** HTTP layer only: validates input, reads/creates jobs and enqueues them. Rendering happens in worker processes. */
 export function createApp(d: AppDeps) {
   const app = express();
-  app.use(cors({ origin: d.corsOrigins }));
+  const limiter = new LoginLimiter();
+  const isAuthed = (cookieHeader: string | undefined) => verifyToken(d.auth, parseCookies(cookieHeader)[SESSION_COOKIE]);
+
+  app.use(cors({ origin: d.corsOrigins, credentials: true }));
   app.use(express.json({ limit: '100kb' }));
+  // Public: the worker's headless Chromium loads this page; it contains no user data.
   app.use('/engine', express.static(d.engineDist));
 
   app.get('/api/health', async (_req, res) => {
     const body: HealthStatus = { api: 'ok', tts: (await d.tts.health()) ? 'ok' : 'unreachable' };
     res.json(body);
+  });
+
+  app.post('/api/auth/login', (req, res) => {
+    const key = req.ip ?? 'unknown';
+    if (limiter.isBlocked(key)) {
+      res.status(429).json({ error: 'Too many failed attempts. Try again in 15 minutes.' });
+      return;
+    }
+    const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown };
+    if (typeof email !== 'string' || typeof password !== 'string' || !checkCredentials(d.auth, email, password)) {
+      limiter.fail(key);
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+    limiter.reset(key);
+    res.cookie(SESSION_COOKIE, issueToken(d.auth), {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.COOKIE_SECURE === '1',
+      maxAge: d.auth.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS,
+      path: '/',
+    });
+    res.json({ authenticated: true, email: d.auth.email });
+  });
+
+  app.post('/api/auth/logout', (_req, res) => {
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    res.json({ authenticated: false });
+  });
+
+  app.get('/api/auth/me', (req, res) => {
+    res.json(isAuthed(req.headers.cookie) ? { authenticated: true, email: d.auth.email } : { authenticated: false });
+  });
+
+  // Everything else under /api requires a valid session.
+  app.use('/api', (req, res, next) => {
+    if (isAuthed(req.headers.cookie)) return next();
+    res.status(401).json({ error: 'Login required' });
   });
 
   app.get('/api/config', async (_req, res) => {

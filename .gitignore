@@ -5,6 +5,7 @@ test-artifacts/
 *.log
 .env
 .env.*
+!.env.example
 services/tts/.venv/
 services/tts/models/
 __pycache__/

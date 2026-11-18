@@ -1,7 +1,10 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { errorMessage } from '@cvs/shared';
 import { createApp } from './app';
-import { config } from './config';
+import { loadAuthConfig } from './authConfig';
+import { config, repoRoot } from './config';
 import { JobStore } from './jobStore';
 import { checkPrereqs } from './prereqs';
 import { cleanupJobs, recoverJobs } from './recovery';
@@ -11,6 +14,15 @@ import { TtsClient } from './ttsClient';
 const DAY_MS = 24 * 3_600_000;
 
 async function main() {
+  // Login credentials live in <repo>/.env (gitignored). See .env.example.
+  const envFile = join(repoRoot, '.env');
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  const authResult = loadAuthConfig(process.env);
+  if (!authResult.ok) {
+    console.error(`Cannot start API: ${authResult.error}`);
+    process.exit(1);
+  }
+
   const problems = await checkPrereqs(config.engineDist);
   if (problems.length) {
     console.error(`Cannot start API:\n - ${problems.join('\n - ')}`);
@@ -45,6 +57,7 @@ async function main() {
     musicDir: config.musicDir,
     engineDist: config.engineDist,
     corsOrigins: config.corsOrigins,
+    auth: authResult.auth,
   });
   app.listen(config.port, () => {
     console.log(`API on http://localhost:${config.port} (TTS ${config.ttsUrl})`);
