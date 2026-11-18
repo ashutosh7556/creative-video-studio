@@ -15,7 +15,12 @@ export default function App() {
       .me()
       .then((s) => setSession(s.authenticated && s.email ? { state: 'in', email: s.email } : { state: 'out' }))
       .catch((e) =>
-        setSession({ state: 'error', message: `API not reachable (${errorMessage(e)}). Start it with \`npm run dev:api\`.` }),
+        setSession({
+          state: 'error',
+          message: import.meta.env.DEV
+            ? `API not reachable (${errorMessage(e)}). Start it with \`npm run dev:api\`.`
+            : 'The video backend is not connected yet, so sign-in is unavailable. Please try again later.',
+        }),
       );
   }, []);
 
