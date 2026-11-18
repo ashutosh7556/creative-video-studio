@@ -4,3 +4,5 @@ export * from './errors';
 export * from './scenes';
 export * from './estimate';
 export * from './captions';
+export * from './timing';
+export * from './spec';
