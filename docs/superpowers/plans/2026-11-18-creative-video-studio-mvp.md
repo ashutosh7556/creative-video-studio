@@ -2767,6 +2767,22 @@ export async function makeSilence(file: string, seconds: number): Promise<void> 
   ]);
 }
 
+export async function probeStream(
+  file: string,
+): Promise<{ sampleRate: number; channels: number; codec: string; samples: number }> {
+  const { stdout } = await runProcess('ffprobe', [
+    '-v', 'error', '-select_streams', 'a:0',
+    '-show_entries', 'stream=sample_rate,channels,codec_name,duration_ts', '-of', 'json', file,
+  ]);
+  const s = JSON.parse(stdout).streams[0];
+  return {
+    sampleRate: Number(s.sample_rate),
+    channels: Number(s.channels),
+    codec: s.codec_name,
+    samples: Number(s.duration_ts),
+  };
+}
+
 export async function meanVolumeDb(file: string): Promise<number> {
   const { stderr } = await runProcess('ffmpeg', ['-i', file, '-af', 'volumedetect', '-f', 'null', '-']);
   const m = /mean_volume:\s*(-?[\d.]+) dB/.exec(stderr);
@@ -2786,7 +2802,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findBgm } from '../src/bgm';
 import { buildMixArgs, buildNarrationArgs, probeWavSec } from '../src/ffmpeg';
 import { runProcess } from '../src/proc';
-import { makeSilence, makeSine, meanVolumeDb } from './helpers/audio';
+import { makeSilence, makeSine, meanVolumeDb, probeStream } from './helpers/audio';
 
 let dir: string;
 beforeAll(async () => {
@@ -2815,6 +2831,20 @@ describe('narration timeline', () => {
     const out = join(dir, 'narration.wav');
     await runProcess('ffmpeg', buildNarrationArgs(files, timing.sceneFrames, out));
     expect(Math.abs((await probeWavSec(out)) - timing.totalFrames / 30)).toBeLessThan(0.001);
+  });
+
+  it('resamples 24 kHz Kokoro-style input to 48 kHz before frame-aligned padding (exact sample count)', async () => {
+    const src = join(dir, 'kokoro24k.wav');
+    await makeSine(src, 1.234, 440, 24000); // same format Kokoro emits: 24 kHz mono PCM16
+    expect(await probeStream(src)).toMatchObject({ sampleRate: 24000, channels: 1 });
+    const timing = buildTiming([await probeWavSec(src)]);
+    const out = join(dir, 'narration48k.wav');
+    await runProcess('ffmpeg', buildNarrationArgs([src], timing.sceneFrames, out));
+    const info = await probeStream(out);
+    expect(info).toMatchObject({ sampleRate: 48000, channels: 1, codec: 'pcm_s16le' });
+    // ceil((1.234 + 0.6) * 30) = 56 frames × 1600 samples/frame
+    expect(info.samples).toBe(56 * 1600);
+    expect(info.samples).toBe(timing.totalFrames * 1600);
   });
 });
 
