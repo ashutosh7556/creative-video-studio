@@ -4469,6 +4469,9 @@ git commit -m "feat(api): add HTTP routes, prerequisite checks and server entry"
 
 ### Task 20: Web scaffold and API client
 
+> **Execution notes (Phase 6):** to keep test-first, `apps/web` gained Vitest (jsdom) + `@testing-library/react` + `jsdom` devDependencies and its own `vitest.config.ts` (root glob `apps/*/vitest.config.ts` picks it up). Tests: `test/api.test.ts` (URL building, POST body, server error message, status fallback) and `test/useJobPolling.test.tsx` (1 s polling, stop on terminal state, 2 s retry on network error, stop on unmount). `main.tsx` is created in Task 21 (it imports `App`).
+
+
 **Files:**
 - Create: `apps/web/package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `vercel.json`, `src/main.tsx`, `src/index.css`, `src/api.ts`, `src/vite-env.d.ts`, `src/hooks/useJobPolling.ts`
 
@@ -4659,6 +4662,9 @@ git commit -m "chore(web): scaffold React + Tailwind app with API client and job
 ---
 
 ### Task 21: Dashboard UI
+
+> **Execution notes (Phase 6):** form controls use explicit `id`/`htmlFor` labels instead of wrapping `<label>` elements (a wrapping label's accessible name includes the option text). Tests: `ScriptForm` (live estimate, >45 s warning, 12-scene block, Hindi voice filtering, full request payload, BGM toggle, voices unavailable, running state), `OutputPanel` (all states), `App` (TTS-down and API-down banners). Verified in real Chromium: stages shown, inline `<video>` plays, download is an attachment.
+
 
 **Files:**
 - Create: `apps/web/src/components/ScriptForm.tsx`, `src/components/OutputPanel.tsx`, `src/components/RecentJobs.tsx`, `src/App.tsx`
@@ -5037,6 +5043,9 @@ git commit -m "feat(web): add dashboard with script form, progress, preview and 
 ## Phase 7 — End-to-end verification and docs
 
 ### Task 22: Smoke tests (English, Hindi, too long)
+
+> **Pre-step (decided after Phase 5 E2E):** greedy caption packing left one-word tail chunks (e.g. a lone `है।` shown for ~0.25 s). `chunkCaption` now splits an over-long sentence into the minimum number of chunks with balanced lengths (min-max partition at word boundaries), falling back to greedy only when a single word exceeds `maxChars`. Test-first in `packages/shared/test/captions.test.ts`.
+
 
 **Files:**
 - Create: `scripts/fixtures/en.txt`, `scripts/fixtures/hi.txt`, `scripts/fixtures/long.txt`, `scripts/smoke.ts`
