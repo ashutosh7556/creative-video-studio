@@ -1,1 +1,30 @@
 @import 'tailwindcss';
+
+/*
+ * The app is dark-only. Colours are set here (not only as classes on <body> in index.html) so text stays
+ * readable even if the browser, a theme or an extension overrides the page background or text colour.
+ */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body {
+    background-color: var(--color-slate-950);
+    color: var(--color-slate-100);
+  }
+  input,
+  textarea,
+  select {
+    color: var(--color-slate-100);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-slate-500);
+    opacity: 1;
+  }
+  option {
+    background-color: var(--color-slate-900);
+    color: var(--color-slate-100);
+  }
+}
