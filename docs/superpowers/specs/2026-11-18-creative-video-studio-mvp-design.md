@@ -189,7 +189,7 @@ Built with Vite into a static page (`dist/index.html` plus assets, fonts copied 
 ```ts
 init(spec: VideoSpec): Promise<void>  // builds scenes, loads fonts, awaits document.fonts.ready
 renderFrame(n: number): void          // deterministic; seeks master timeline to n / fps and renders
-captureRaw(): Uint8ClampedArray       // composite canvas getImageData (used by tests)
+captureRawHash(): Promise<string>     // SHA-256 of composite canvas getImageData, pre-JPEG (used by tests)
 captureJpeg(quality: number): string  // composite canvas → base64 JPEG
 ```
 
@@ -233,7 +233,7 @@ The worker:
    ```
    ffmpeg -y -f image2pipe -framerate 30 -c:v mjpeg -i - -i <mix.wav>
           -map 0:v -map 1:a -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -r 30
-          -c:a aac -b:a 192k -shortest -movflags +faststart out.tmp.mp4
+          -c:a aac -b:a 192k -ac 2 -movflags +faststart out.tmp.mp4
    ```
 4. For each frame: `renderFrame(n)` then `captureJpeg(0.92)`, decode the base64 and write it to FFmpeg stdin, respecting backpressure (wait for `drain`). Progress is reported over IPC every 10 frames.
 5. Closes stdin and waits for FFmpeg to exit with code 0. On failure the last 2 KB of stderr goes into the error message.
@@ -329,7 +329,7 @@ Prerequisites, checked by the API at startup with a clear message on failure: No
 | api | Vitest | timing builder (frame alignment, `DURATION_EXCEEDED` message); FFmpeg argument builders (narration, BGM present and missing); atomic job store (concurrent writes, temp file cleanup, corrupt file handling); startup recovery (running → INTERRUPTED, queued re-enqueued); cleanup rules (active, recent and invalid kept, old done/failed removed); id validation |
 | audio | Vitest + real FFmpeg | three synthetic sine WAVs of known length → `narration.wav` duration = `totalFrames / 30` ± 1 ms; BGM mix: narration mean volume at least 12 dB above BGM-only mean volume (`volumedetect`) |
 | tts | pytest | `/voices` contains the 4 Hindi voices; mismatch (`hi` + `af_heart`) → 400; bad speed → 400; short English and Hindi synthesis → valid 24 kHz WAV with duration > 0; the model is loaded once (instance identity across requests) |
-| engine | Vitest + Puppeteer, same headless Chromium flags as the worker | **Pixel determinism**: render frame 45, then frames 0..90, then frame 45 again; `captureRaw()` SHA-256 identical. A fresh page with the same spec gives the same hash for frame 45. **Hindi captions**: `document.fonts.check` is true for Noto Sans Devanagari; a shaping check shows the conjunct `क्ष` measures narrower than the sum of `क`, `्` and `ष` measured separately (proves complex-script shaping); a PNG of a Hindi caption frame is saved to `test-artifacts/` for visual review |
+| engine | Vitest + Puppeteer, same headless Chromium flags as the worker | **Pixel determinism**: render frame 45, then frames 0..90, then frame 45 again; `captureRawHash()` identical (hash computed in-page from raw `getImageData`, before JPEG). A fresh page with the same spec gives the same hash for frame 45. **Hindi captions**: `document.fonts.check` is true for Noto Sans Devanagari; a shaping check shows the conjunct `क्ष` measures narrower than the sum of `क`, `्` and `ष` measured separately (proves complex-script shaping); a PNG of a Hindi caption frame is saved to `test-artifacts/` for visual review |
 | E2E | `scripts/smoke.ts` | Run separately for English (`smoke:en`) and Hindi (`smoke:hi`): POST a 3–4 paragraph script, poll until done, then ffprobe `out.mp4`: H.264 1280×720, 30 fps, AAC; duration within 30–45 s; audio and video stream durations within 33 ms; frame count = `totalFrames`. A further case: a script that is too long → `DURATION_EXCEEDED` |
 
 ## 16. Extension seams (not built now)
