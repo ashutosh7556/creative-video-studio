@@ -160,7 +160,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    projects: ['packages/shared', 'packages/scene-engine', 'apps/api'],
+    // Globs so projects appear as packages are created; --project filters use package names (@cvs/*).
+    projects: ['packages/*', 'apps/*/vitest.config.ts'],
   },
 });
 ```
@@ -215,7 +216,7 @@ export {};
 Run: `npm install`
 Expected: completes, creates `node_modules/@cvs/shared` symlink.
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: "No test files found" (exit code 1 is fine here; it proves Vitest resolves the project).
 
 - [ ] **Step 8: Commit**
@@ -276,7 +277,7 @@ describe('PipelineError', () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: FAIL — `JobRequestSchema` is not exported.
 
 - [ ] **Step 3: Implement** — `packages/shared/src/constants.ts`
@@ -456,7 +457,7 @@ export * from './errors';
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: PASS (7 tests).
 
 - [ ] **Step 5: Commit**
@@ -550,7 +551,7 @@ describe('estimateDurationSec', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: FAIL — `parseParagraphs` / `countWords` not exported.
 
 - [ ] **Step 3: Implement** — `packages/shared/src/scenes.ts`
@@ -609,7 +610,7 @@ export * from './estimate';
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -689,7 +690,7 @@ describe('timeCaptions', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: FAIL — `chunkCaption` not exported.
 
 - [ ] **Step 3: Implement** — `packages/shared/src/captions.ts`
@@ -754,7 +755,7 @@ Append to `index.ts`: `export * from './captions';`
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -866,7 +867,7 @@ describe('buildVideoSpec', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: FAIL — `buildTiming` not exported.
 
 - [ ] **Step 3: Implement** — `packages/shared/src/timing.ts`
@@ -971,7 +972,7 @@ export * from './spec';
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project packages/shared`
+Run: `npx vitest run --project @cvs/shared`
 Expected: PASS. Check scene frames in spec test: 2.0→78, 3.0→ceil(108)=108, 1.0→48 ✔.
 
 - [ ] **Step 5: Typecheck and commit**
@@ -1564,7 +1565,7 @@ describe('cameraMoves', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project packages/scene-engine test/transitions.test.ts`
+Run: `npx vitest run --project @cvs/scene-engine test/transitions.test.ts`
 Expected: FAIL — modules not found.
 
 - [ ] **Step 3: Implement** — `packages/scene-engine/src/rng.ts`
@@ -1647,7 +1648,7 @@ export function applyCamera(camera: PerspectiveCamera, s: CamState): void {
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project packages/scene-engine test/transitions.test.ts`
+Run: `npx vitest run --project @cvs/scene-engine test/transitions.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -2179,7 +2180,7 @@ Spec frames for the determinism spec: (2.5 + 0.6) × 30 = 93 per scene, total 18
 
 - [ ] **Step 2: Run**
 
-Run: `npx vitest run --project packages/scene-engine`
+Run: `npx vitest run --project @cvs/scene-engine`
 Expected: all tests PASS (the first run takes up to a minute while Vite builds and Chromium starts).
 
 If the determinism test fails, look for any `Math.random`, `Date`, `performance.now` or `requestAnimationFrame` in the render path, and check that `gsap.ticker.sleep()` runs before any timeline is created.
@@ -2376,7 +2377,7 @@ describe('JobStore', () => {
 
 - [ ] **Step 3: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/jobStore.test.ts`
+Run: `npx vitest run --project @cvs/api test/jobStore.test.ts`
 Expected: FAIL — `../src/jobStore` not found.
 
 - [ ] **Step 4: Implement** — `apps/api/src/atomicWrite.ts`
@@ -2504,7 +2505,7 @@ export class JobStore {
 
 - [ ] **Step 5: Run to verify pass**
 
-Run: `npx vitest run --project apps/api test/jobStore.test.ts`
+Run: `npx vitest run --project @cvs/api test/jobStore.test.ts`
 Expected: PASS (8 tests).
 
 - [ ] **Step 6: Commit**
@@ -2586,7 +2587,7 @@ describe('checkVideo', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/ffmpeg.test.ts`
+Run: `npx vitest run --project @cvs/api test/ffmpeg.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement** — `apps/api/src/proc.ts`
@@ -2742,7 +2743,7 @@ export async function findBgm(dir: string): Promise<string | null> {
 
 - [ ] **Step 4: Run unit tests**
 
-Run: `npx vitest run --project apps/api test/ffmpeg.test.ts`
+Run: `npx vitest run --project @cvs/api test/ffmpeg.test.ts`
 Expected: PASS. (The narration test uses 78 × 1600 = 124800 and 30 × 1600 = 48000.)
 
 - [ ] **Step 5: Write real-FFmpeg integration tests**
@@ -2882,7 +2883,7 @@ describe('background music', () => {
 
 - [ ] **Step 6: Run integration tests**
 
-Run: `npx vitest run --project apps/api test/audio.integration.test.ts`
+Run: `npx vitest run --project @cvs/api test/audio.integration.test.ts`
 Expected: PASS. If `apad=whole_len` errors, check `ffmpeg -h filter=apad` lists `whole_len` (FFmpeg ≥ 4.2).
 
 - [ ] **Step 7: Commit**
@@ -2969,7 +2970,7 @@ describe('TtsClient', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/ttsClient.test.ts`
+Run: `npx vitest run --project @cvs/api test/ttsClient.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement** — `apps/api/src/ttsClient.ts`
@@ -3039,7 +3040,7 @@ export class TtsClient implements TtsLike {
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project apps/api test/ttsClient.test.ts`
+Run: `npx vitest run --project @cvs/api test/ttsClient.test.ts`
 Expected: PASS (5 tests).
 
 - [ ] **Step 5: Commit**
@@ -3222,7 +3223,7 @@ Add `vite` to `apps/api` devDependencies: `npm install -D vite@^8 -w @cvs/api`.
 
 - [ ] **Step 3: Run**
 
-Run: `npx vitest run --project apps/api test/render.integration.test.ts`
+Run: `npx vitest run --project @cvs/api test/render.integration.test.ts`
 Expected: PASS. Spec = ceil(2.0 × 30) = 60 frames.
 
 - [ ] **Step 4: Commit**
@@ -3343,7 +3344,7 @@ describe('runPipeline', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/pipeline.test.ts`
+Run: `npx vitest run --project @cvs/api test/pipeline.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement** — `apps/api/src/pipeline.ts`
@@ -3564,7 +3565,7 @@ process.once('message', async (start: WorkerStart) => {
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project apps/api test/pipeline.test.ts`
+Run: `npx vitest run --project @cvs/api test/pipeline.test.ts`
 Expected: PASS. Check: 23 s per scene → ceil(23.6 × 30) = 708 frames × 2 = 1416 → 47.2 s > 45 → DURATION_EXCEEDED.
 
 - [ ] **Step 5: Commit**
@@ -3687,7 +3688,7 @@ describe('LocalForkRunner', () => {
 
 - [ ] **Step 3: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/runner.test.ts`
+Run: `npx vitest run --project @cvs/api test/runner.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 4: Implement** — `apps/api/src/runner.ts`
@@ -3825,7 +3826,7 @@ export class LocalForkRunner implements JobRunner {
 
 - [ ] **Step 5: Run to verify pass**
 
-Run: `npx vitest run --project apps/api test/runner.test.ts`
+Run: `npx vitest run --project @cvs/api test/runner.test.ts`
 Expected: PASS (5 tests).
 
 - [ ] **Step 6: Commit**
@@ -3916,7 +3917,7 @@ describe('cleanupJobs', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/recovery.test.ts`
+Run: `npx vitest run --project @cvs/api test/recovery.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement** — `apps/api/src/recovery.ts`
@@ -3974,7 +3975,7 @@ export async function cleanupJobs(
 
 - [ ] **Step 4: Run to verify pass**
 
-Run: `npx vitest run --project apps/api test/recovery.test.ts`
+Run: `npx vitest run --project @cvs/api test/recovery.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -4113,7 +4114,7 @@ describe('API', () => {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `npx vitest run --project apps/api test/app.test.ts`
+Run: `npx vitest run --project @cvs/api test/app.test.ts`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement** — `apps/api/src/app.ts`
@@ -4330,7 +4331,7 @@ main().catch((err) => {
 
 - [ ] **Step 4: Run all API tests**
 
-Run: `npx vitest run --project apps/api`
+Run: `npx vitest run --project @cvs/api`
 Expected: PASS (every API test file).
 
 - [ ] **Step 5: Start manually**
