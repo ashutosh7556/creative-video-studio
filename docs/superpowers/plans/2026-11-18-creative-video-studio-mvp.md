@@ -3157,6 +3157,9 @@ git commit -m "feat(api): add TTS client with single retry on server errors"
 
 ### Task 15: Puppeteer → FFmpeg renderer
 
+> **Execution notes (Phase 5):** `RenderOptions.onProcesses?({ browserPid, ffmpegPid })` was added so tests verify both processes are gone after success, abort, engine-init failure and FFmpeg failure. The integration test renders real sine audio, ffprobe-checks the MP4 and fully decodes it (`ffmpeg -v error -f null`). Committed code in `apps/api/src/render.ts` / `apps/api/test/render.integration.test.ts` is authoritative.
+
+
 **Files:**
 - Create: `apps/api/src/render.ts`
 - Test: `apps/api/test/render.integration.test.ts`
@@ -3337,6 +3340,9 @@ git commit -m "feat(api): render engine frames through Puppeteer into FFmpeg"
 ---
 
 ### Task 16: Pipeline and worker entry
+
+> **Execution notes (Phase 5):** the render + verify + rename step is wrapped so `out.tmp.mp4` is removed whenever rendering or output verification fails. Extra tests: BGM enabled with file (renderer gets `mix.wav`, narration ≥ 12 dB over BGM), BGM disabled with file present, temp cleanup on render and verify failure.
+
 
 **Files:**
 - Create: `apps/api/src/pipeline.ts`, `src/worker/messages.ts`, `src/worker/index.ts`
@@ -3679,6 +3685,9 @@ git commit -m "feat(api): add render pipeline with post-TTS duration check and w
 ---
 
 ### Task 17: LocalForkRunner
+
+> **Execution notes (Phase 5):** extra tests for continuing after a crash and strict concurrency 1 (three slow jobs, never two `running`). Found in E2E: a hard-killed worker left `out.tmp.mp4` until restart, so the runner now deletes it when a worker exits without reporting (fake worker writes a partial file in `crash` mode). The engine `index.html` declares `<link rel="icon" href="data:,">` to stop a favicon 404 polluting worker stderr.
+
 
 **Files:**
 - Create: `apps/api/src/runner.ts`
@@ -4089,6 +4098,9 @@ git commit -m "feat(api): add startup recovery for interrupted jobs and safe 24h
 ---
 
 ### Task 19: HTTP routes, prerequisites and server entry
+
+> **Execution notes (Phase 5):** Express 5 emits `attachment; filename=video-<id>.mp4` (unquoted, valid per RFC 6266), so the test accepts optional quotes. Added `test/prereqs.test.ts` (fails if `executablePath()` is not awaited) and a `/engine/` static-serving test.
+
 
 **Files:**
 - Create: `apps/api/src/app.ts`, `src/prereqs.ts`, `src/server.ts`
